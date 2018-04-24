@@ -26,15 +26,10 @@
 namespace dsn {
 namespace stats {
 
-class histogram {
+class histogram
+{
 public:
-
-    histogram(const char* app,
-            const char* section,
-            const char* name,
-            const char* dsptr)
-    {
-    }
+    histogram(const char *app, const char *section, const char *name, const char *dsptr) {}
 
 private:
     hdr_histogram _histogram;

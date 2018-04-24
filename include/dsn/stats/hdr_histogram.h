@@ -1,37 +1,37 @@
-// Copyright (c) 2018, Xiaomi, Inc.  All rights reserved.
-// Copyright Apache/Kudu.
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+//   http://www.apache.org/licenses/LICENSE-2.0
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
-
-#pragma once
-
-#include <cstdint>
-#include <atomic>
-#include <dsn/utility/ports.h>
-
-namespace dsn {
-namespace stats {
-
-//
 // Portions of these classes were ported from Java to C++ from the sources
 // available at https://github.com/HdrHistogram/HdrHistogram .
 //
 //   The code in this repository code was Written by Gil Tene, Michael Barker,
 //   and Matt Warren, and released to the public domain, as explained at
 //   http://creativecommons.org/publicdomain/zero/1.0/
-// ---------------------------------------------------------------------------
-//
+
+#pragma once
+
+#include <cstdint>
+#include <atomic>
+#include <dsn/c/api_utilities.h>
+#include <dsn/utility/ports.h>
+
+namespace dsn {
+namespace stats {
+
 // A High Dynamic Range (HDR) Histogram
 //
 // HdrHistogram supports the recording and analyzing sampled data value counts
@@ -54,101 +54,124 @@ namespace stats {
 // (or better).
 //
 
+// At its heart the algorithm reduces the precision of each recorded value to
+// achieve lower memory usage than method that maintains all values in a
+// sorted array.
 //
-// At its heart, it keeps the count for recorded samples in "buckets" of values. The resolution
-// and distribution of these buckets is tuned based on the desired highest trackable value, as
-// well as the user-specified number of significant decimal digits to preserve. The values for the
-// buckets are kept in a way that resembles floats and doubles: there is a mantissa and an
-// exponent, and each bucket represents a different exponent. The "sub-buckets" within a bucket
-// represent different values for the mantissa.
+// For example, given an array sorted of 100000 values, 200 is the 98.01th percentile,
+// 201 is the P98.05, 211 is P99, then we don't need to maintain either
+// 200 or 201 when only P99 is required.
+// In HDR histogram, it removes the lower 1 bit of each value to reduce
+// the bucket count. 200 and 201 are regarded as the same, 210 and 211 likewise.
+// Larger value, more bits removed.
+
 //
-// To a first approximation, the sub-buckets of the first
-// bucket would hold the values `0`, `1`, `2`, `3`, …, the sub-buckets of the second bucket would
-// hold `0`, `2`, `4`, `6`, …, the third would hold `0`, `4`, `8`, and so on. However, the low
-// half of each bucket (except bucket 0) is unnecessary, since those values are already covered by
-// the sub-buckets of all the preceeding buckets. Thus, `Histogram` keeps the top half of every
-// such bucket.
+// HDR histogram uses two level of buckets to store data value counts:
+//    counts = new uint64[bucket_count][sub_bucket_count]
 //
-// For the purposes of explanation, consider a `Histogram` with 2048 sub-buckets for every bucket,
-// and a lowest discernible value of 1:
+// For example, to track value ranging from 1 to 10^8, number of significant digits is 3,
+// the algorithm performs as below:
 //
-// > The 0th bucket covers 0...2047 in multiples of 1, using all 2048 sub-buckets
-// > The 1st bucket covers 2048..4097 in multiples of 2, using only the top 1024 sub-buckets
-// > The 2nd bucket covers 4096..8191 in multiple of 4, using only the top 1024 sub-buckets
-// > ...
+//  sub_bucket_count = number of bits that holds the 3 significant digits (from 0 to 999)
+//                     since 1111111111 = 1023 > 999, it requires 10 bits.
+//                   = 10
 //
-// Bucket 0 is "special" here. It is the only one that has 2048 entries. All the rest have
-// 1024 entries (because their bottom half overlaps with and is already covered by the all of
-// the previous buckets put together). In other words, the `k`'th bucket could represent `0 *
-// 2^k` to `2048 * 2^k` in 2048 buckets with `2^k` precision, but the midpoint of `1024 * 2^k
-// = 2048 * 2^(k-1)`, which is the k-1'th bucket's end. So, we would use the previous bucket
-// for those lower values as it has better precision.
+//      bucket_count = number of heading bits
+//                     since 1111111111111111 1111111111   = 2^28-1 = 134217727 > 10^8
+//                                bucket      sub-bucket
+//                     it requires 16 bits
+//                   = 16
+//
+// To record a value = 10000 (in bits: 10011100010000) into this histogram,
+//
+//         bucket_id = the highest bit in bucket part,
+//                     since 1111111111111111 1111111111
+//                                       1001 1100010000
+//                                       |
+//                                       4th in bucket part
+//                   = 4
+//
+// values within [0 (0 00000 00000), 2047 (1 11111 11111)] all belong to bucket 1,
+//               [2048 (10 00000 00000), 4095 (11 11111 11111)] to bucket 2
+//               [4096 (100 00000 00000), 8191 (111 11111 11111)] to bucket 3
+//               [8192 (1000 00000 00000), 16383 (1111 11111 11111)] to bucket 4
+//               ....
+//
+//     sub_bucket_id = (10000 >> bucket_id)
+//  value_from_index = sub_bucket_id << bucket_id
 //
 
-class hdr_histogram {
+class hdr_histogram
+{
 public:
-
-    // Specify the highest trackable value so that the class has a bound on the
-    // number of buckets, and of significant digits (in decimal) so that the
-    // class can determine the granularity of those buckets.
+    /// \param highest_trackable_value:
+    /// The highest value to be tracked by the histogram.
+    /// For example, for measurement of latency range in [1us, 100s],
+    /// highest_trackable_value = 10^8
+    ///
+    /// \param num_significant_digits:
+    /// The number of significant decimal digits to which the
+    /// histogram will maintain value resolution and separation.
+    /// For example, if you want P99, P999, and P9999 PUT latencies in 10s,
+    /// num_significant_digits = 4
+    ///
     hdr_histogram(uint64_t highest_trackable_value, int num_significant_digits)
-            :_highest_trackable_value(highest_trackable_value), _sub_bucket_mask()
+        : _highest_trackable_value(highest_trackable_value),
+          _num_significant_digits(num_significant_digits)
     {
+        dassert(highest_trackable_value >= 2, "highest_trackable_value must be >= 2");
+        dassert(num_significant_digits >= 1 && num_significant_digits <= 5,
+                "num_significant_digits must be between 1 and 5");
+
         uint32_t largest_value_with_single_unit_resolution =
-                2*static_cast<uint32_t>(pow(10.0, _num_significant_digits));
-
-        // We need to maintain power-of-two sub_bucket_count_ (for clean direct
-        // indexing) that is large enough to provide unit resolution to at least
-        // largest_value_with_single_unit_resolution. So figure out
-        // largest_value_with_single_unit_resolution's nearest power-of-two
-        // (rounded up), and use that:
-
-        // The sub-buckets take care of the precision.
-        // Each sub-bucket is sized to have enough bits for the requested
-        // 10^precision accuracy.
+            2 * static_cast<uint32_t>(pow(10.0, _num_significant_digits));
         int sub_bucket_count_magnitude =
-                Bits::Log2Ceiling(largest_value_with_single_unit_resolution);
-        _sub_bucket_half_count_magnitude =
-                (sub_bucket_count_magnitude>=1) ? sub_bucket_count_magnitude-1 : 0;
+            static_cast<int>(ceil(log2(largest_value_with_single_unit_resolution)));
+        _sub_bucket_half_count_magnitude = sub_bucket_count_magnitude - 1;
+        _sub_bucket_count = 1u << sub_bucket_count_magnitude;
+        _sub_bucket_mask = _sub_bucket_count - 1;
+        _sub_bucket_half_count = _sub_bucket_count / 2;
 
-        // for highest = 1000, bucket_count = 10;
         _bucket_count = 1;
-        while (_bucket_count<highest_trackable_value) {
+        while (_bucket_count < highest_trackable_value) {
             highest_trackable_value <<= 1;
             _bucket_count++;
         }
+
+        _counts_array_length = (_bucket_count + 1) * _sub_bucket_half_count;
+        _counts.reset(new std::atomic_uint_fast64_t[_counts_array_length]{0});
     }
 
-    // Get the exact minimum value (may lie outside the histogram).
+    /// Get the exact minimum value (may lie outside the histogram).
     uint64_t min() const { return _min.load(std::memory_order_relaxed); }
 
-    // Get the exact maximum value (may lie outside the histogram).
+    /// Get the exact maximum value (may lie outside the histogram).
     uint64_t max() const { return _max.load(std::memory_order_relaxed); }
 
-    // Count of all events recorded.
-    uint64_t count() const { return _count.load(std::memory_order_relaxed); }
+    /// Count of all events recorded.
+    uint64_t total_count() const { return _total.load(std::memory_order_relaxed); }
 
-    // Sum of all events recorded.
+    /// Sum of all events recorded.
     uint64_t sum() const { return _sum.load(std::memory_order_relaxed); }
 
-    // Get the exact mean value of all recorded values in the histogram.
-    double avg() const { return static_cast<double>(sum())/count(); }
+    /// Get the exact mean value of all recorded values in the histogram.
+    double avg() const { return static_cast<double>(sum()) / total_count(); }
 
     void record(uint64_t val)
     {
-        // Dissect the value into bucket and sub-bucket parts, and derive index into
-        // counts array:
+        int bucket_idx = bucket_index(val);
+        int sub_bucket_idx = sub_bucket_index(val, bucket_idx);
+        _counts[counts_array_index(bucket_idx, sub_bucket_idx)].fetch_add(1);
 
-        _count.store(_count.load(std::memory_order_relaxed)+1, std::memory_order_relaxed);
-        _sum.store(_sum.load(std::memory_order_relaxed)+val, std::memory_order_relaxed);
+        _total.fetch_add(1, std::memory_order_relaxed);
+        _sum.fetch_add(val, std::memory_order_relaxed);
 
         // Update min, if needed.
         while (true) {
             uint64_t old_min = min();
-            if (dsn_unlikely(val<old_min)) {
+            if (dsn_unlikely(val < old_min)) {
                 _min.store(val, std::memory_order_relaxed);
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -156,79 +179,100 @@ public:
         // Update max, if needed.
         while (true) {
             uint64_t old_max = max();
-            if (dsn_unlikely(val<old_max)) {
+            if (dsn_unlikely(val < old_max)) {
                 _max.store(val, std::memory_order_relaxed);
-            }
-            else {
+            } else {
                 break;
             }
         }
     }
 
-private:
-
-    // Get the value at a given percentile.
-    // This is a percentile in percents, i.e. 99.99 percentile.
+    /// Get the value at a given percentile.
+    /// This is a percentile in percents, i.e. 99.99 percentile.
     uint64_t value_at_percentile(double percentile) const
     {
-        if (dsn_unlikely(_count==0)) {
+        if (dsn_unlikely(_total == 0)) {
             return 0;
         }
 
         percentile = std::min(percentile, 100.00);
-        uint64_t k = std::max(static_cast<uint64_t>(percentile*count()), uint64_t(1));
+        auto k = std::max(static_cast<uint64_t>(percentile * total_count()), uint64_t(1));
 
         // turn it into a "approximate kth(k>=1) largest number problem".
 
-        for (int i = 0; i<_bucket_count; i++) {
-            int j = (i==0) ? 0 : (_sub_bucket_count/2);
-            for (; j<_sub_bucket_count; j++) {
-                total_to_current_iJ += CountAt(i, j);
-                if (total_to_current_iJ>=count_at_percentile) {
-                    uint64_t valueAtIndex = ValueFromIndex(i, j);
-                    return valueAtIndex;
+        uint64_t total_to_current = 0;
+        for (int i = 0; i < _bucket_count; i++) {
+            int j = (i == 0) ? 0 : (_sub_bucket_count / 2);
+            for (; j < _sub_bucket_count; j++) {
+                total_to_current += count_at(i, j);
+                if (total_to_current >= k) {
+                    return value_from_index(i, j);
                 }
             }
-
         }
+
+        return 0;
     }
 
-    uint64_t count_at(int bucket_index, int sub_bucket_index)
-    {
-
-    }
-
-    // Get indexes into histogram based on value.
+private:
     int bucket_index(uint64_t val)
     {
-        if (dsn_unlikely(val>_highest_trackable_value)) {
+        if (dsn_unlikely(val > _highest_trackable_value)) {
             val = _highest_trackable_value;
         }
 
-        // Here we are calculting the power-of-2 magnitude of the value with a
-        // correction for precision in the first bucket.
-        // Smallest power of 2 containing value.
-        int pow2ceiling = Bits::Log2Ceiling64(value | sub_bucket_mask_);
-        return pow2ceiling-(sub_bucket_half_count_magnitude_+1);
+        int pow2ceiling = static_cast<int>(ceil(log2(static_cast<double>(val | _sub_bucket_mask))));
+        return pow2ceiling - (_sub_bucket_half_count_magnitude + 1);
     }
+
     int sub_bucket_index(uint64_t val, int bucket_index)
     {
+        if (dsn_unlikely(val > _highest_trackable_value)) {
+            val = _highest_trackable_value;
+        }
 
+        return static_cast<int>(val >> bucket_index);
+    }
+
+    int counts_array_index(int bucket_index, int sub_bucket_index) const
+    {
+        assert(bucket_index < _bucket_count);
+        assert(sub_bucket_index < _sub_bucket_count);
+
+        int bucket_base_index = (bucket_index + 1) << _sub_bucket_half_count_magnitude;
+        int offset_in_bucket = sub_bucket_index - _sub_bucket_half_count;
+
+        return bucket_base_index + offset_in_bucket;
+    }
+
+    uint64_t count_at(int bucket_index, int sub_bucket_index) const
+    {
+        return _counts[counts_array_index(bucket_index, sub_bucket_index)].load(
+            std::memory_order_relaxed);
+    }
+
+    uint64_t value_from_index(int bucket_index, int sub_bucket_index) const
+    {
+        return static_cast<uint64_t>(sub_bucket_index) << bucket_index;
     }
 
 private:
     std::atomic_uint_fast64_t _max{0};
     std::atomic_uint_fast64_t _min{0};
-    std::atomic_uint_fast64_t _count{0};
+    std::atomic_uint_fast64_t _total{0};
     std::atomic_uint_fast64_t _sum{0};
 
     uint64_t _highest_trackable_value{0};
+    int _num_significant_digits{0};
 
     int _bucket_count{0};
-    uint64_t _sub_bucket_mask{0};
-    int _sub_bucket_count{0};
-    int _sub_bucket_half_count_magnitude;
-    int _num_significant_digits;
+    uint32_t _sub_bucket_mask{0};
+    uint32_t _sub_bucket_count{0};
+    uint32_t _sub_bucket_half_count{0};
+    int _sub_bucket_half_count_magnitude{0};
+
+    std::unique_ptr<std::atomic_uint_fast64_t[]> _counts;
+    int _counts_array_length{0};
 };
 
 } // namespace stats
