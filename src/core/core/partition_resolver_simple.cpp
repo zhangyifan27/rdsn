@@ -340,6 +340,10 @@ void partition_resolver_simple::query_config_reply(error_code err,
 
     // get specific or all partition update
     if (partition_index != -1) {
+        dinfo("%s.client: start handle pending response for gpid(%d.%d)",
+              _app_path.c_str(),
+              _app_id,
+              partition_index);
         partition_context *pc = nullptr;
         {
             zauto_lock l(_requests_lock);
@@ -358,6 +362,7 @@ void partition_resolver_simple::query_config_reply(error_code err,
 
     // get all partition update
     else {
+        dinfo("%s.client: start handle pending response for all partitions", _app_path.c_str());
         pending_replica_requests reqs;
         std::deque<request_context_ptr> reqs2;
         {
@@ -391,10 +396,16 @@ void partition_resolver_simple::query_config_reply(error_code err,
 void partition_resolver_simple::handle_pending_requests(std::deque<request_context_ptr> &reqs,
                                                         error_code err)
 {
+    dinfo("%s.client: handle pending request with error(%s)", _app_path.c_str(), err.to_string());
     for (auto &req : reqs) {
         if (err == ERR_OK) {
             rpc_address addr;
             err = get_address(req->partition_index, addr);
+            dinfo("%s.client: get address(%s) for pidx(%d) with error(%s)",
+                  _app_path.c_str(),
+                  addr.to_string(),
+                  req->partition_index,
+                  err.to_string());
             if (err == ERR_OK) {
                 end_request(std::move(req), err, addr);
             } else {
@@ -459,6 +470,10 @@ error_code partition_resolver_simple::get_address(int partition_index, /*out*/ r
         if (it != _config_cache.end()) {
             // config = it->second->config;
             addr = get_address(it->second->config);
+            dinfo("%s.client: get address(%s) of pidx(%d) from config",
+                  _app_path.c_str(),
+                  addr.to_string(),
+                  partition_index);
             if (addr.is_invalid()) {
                 return ERR_IO_PENDING;
             } else {
