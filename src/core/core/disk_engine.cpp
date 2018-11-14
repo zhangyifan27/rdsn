@@ -272,7 +272,9 @@ void disk_engine::process_write(aio_task *aio, uint32_t sz)
         auto bb = tls_trans_mem_alloc_blob((size_t)sz);
         char *ptr = (char *)bb.data();
         auto current_wk = aio;
+        int cnt = 0;
         do {
+            cnt++;
             current_wk->copy_to(ptr);
             ptr += current_wk->aio()->buffer_size;
             current_wk = (aio_task *)current_wk->next;
@@ -283,6 +285,8 @@ void disk_engine::process_write(aio_task *aio, uint32_t sz)
                 (uint64_t)(ptr),
                 (uint64_t)(bb.data()),
                 bb.length());
+
+        ddebug("dispatch batch write, batch_count = %d, data_size = %d", cnt, (int)sz);
 
         // setup io task
         auto new_task = new batch_write_io_task(aio, bb);
