@@ -76,6 +76,11 @@ void replica::init_prepare(mutation_ptr &mu, bool reconciliation)
             "invalid partition_status, status = %s",
             enum_to_string(status()));
 
+    if (mu->client_requests.size() > 1) {
+        ddebug("%s: prepare mutation: request_count = %d, data_size = %d", name(),
+                (int)mu->client_requests.size(), mu->appro_data_bytes());
+    }
+
     error_code err = ERR_OK;
     uint8_t count = 0;
     mu->data.header.last_committed_decree = last_committed_decree();
