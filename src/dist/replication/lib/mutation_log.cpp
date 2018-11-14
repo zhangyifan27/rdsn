@@ -143,6 +143,8 @@ void mutation_log_shared::write_pending_mutations(bool release_lock_required)
     // seperate commit_log_block from within the lock
     _slock.unlock();
 
+    ddebug("mutation_count = %d, data_size = %d", (int)pmu->size(), (int)blk->size());
+
     pr.first->commit_log_block(
         *blk,
         start_offset,
