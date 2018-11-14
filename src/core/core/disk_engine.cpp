@@ -286,7 +286,7 @@ void disk_engine::process_write(aio_task *aio, uint32_t sz)
                 (uint64_t)(bb.data()),
                 bb.length());
 
-        ddebug("dispatch batch write, batch_count = %d, data_size = %d", cnt, (int)sz);
+        ddebug("write opt, batch_count = %d, data_size = %d", cnt, (int)sz);
 
         // setup io task
         auto new_task = new batch_write_io_task(aio, bb);

@@ -144,7 +144,8 @@ void mutation_log_shared::write_pending_mutations(bool release_lock_required)
     _slock.unlock();
 
     if (pmu->size() > 1) {
-        ddebug("mutation_count = %d, data_size = %d", (int)pmu->size(), (int)blk->size());
+        ddebug(
+            "write opt, mutation_count = %d, data_size = %d", (int)pmu->size(), (int)blk->size());
     }
 
     pr.first->commit_log_block(
