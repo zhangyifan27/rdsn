@@ -188,6 +188,10 @@ void mutation_log_shared::write_pending_mutations(bool release_lock_required)
                     // FIXME : the file could have been closed
                     lf->flush();
                 }
+
+                if (_write_size_counter) {
+                    (*_write_size_counter)->add(sz);
+                }
             } else {
                 derror("write shared log failed, err = %s", err.to_string());
             }

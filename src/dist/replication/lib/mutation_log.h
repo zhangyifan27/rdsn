@@ -39,6 +39,7 @@
 #include "mutation.h"
 #include <atomic>
 #include <dsn/tool-api/zlocks.h>
+#include <dsn/perf_counter/perf_counter_wrapper.h>
 
 namespace dsn {
 namespace replication {
@@ -383,11 +384,15 @@ typedef dsn::ref_ptr<mutation_log> mutation_log_ptr;
 class mutation_log_shared : public mutation_log
 {
 public:
-    mutation_log_shared(const std::string &dir, int32_t max_log_file_mb, bool force_flush)
+    mutation_log_shared(const std::string &dir,
+                        int32_t max_log_file_mb,
+                        bool force_flush,
+                        perf_counter_wrapper *write_size_counter = nullptr)
         : mutation_log(dir, max_log_file_mb, dsn::gpid(), nullptr),
           _is_writing(false),
           _pending_write_start_offset(0),
-          _force_flush(force_flush)
+          _force_flush(force_flush),
+          _write_size_counter(write_size_counter)
     {
     }
 
@@ -427,6 +432,7 @@ private:
     int64_t _pending_write_start_offset;
 
     bool _force_flush;
+    perf_counter_wrapper *_write_size_counter;
 };
 
 class mutation_log_private : public mutation_log

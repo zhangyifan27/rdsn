@@ -175,11 +175,13 @@ void replica::init_prepare(mutation_ptr &mu, bool reconciliation)
                                              get_gpid().thread_hash(),
                                              &pending_size);
         dassert(nullptr != mu->log_task(), "");
-        if (pending_size > 100 * 1024) {
-            int delay_ms = 100;
+        if (_options->log_shared_pending_size_throttling_threshold_kb > 0 &&
+            _options->log_shared_pending_size_throttling_delay_ms > 0 &&
+            pending_size >= _options->log_shared_pending_size_throttling_threshold_kb * 1024) {
+            int delay_ms = _options->log_shared_pending_size_throttling_delay_ms;
             for (dsn::message_ex *r : mu->client_requests) {
                 if (r && r->io_session->delay_recv(delay_ms)) {
-                    dwarn("too large pending mutation log (%" PRId64 "), "
+                    dwarn("too large pending shared log (%" PRId64 "), "
                           "delay traffic from %s for %d milliseconds",
                           pending_size,
                           r->header->from_address.to_string(),
