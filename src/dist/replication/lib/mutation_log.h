@@ -137,7 +137,8 @@ public:
                                    dsn::task_code callback_code,
                                    dsn::task_tracker *tracker,
                                    aio_handler &&callback,
-                                   int hash = 0) = 0;
+                                   int hash = 0,
+                                   int64_t *pending_size = nullptr) = 0;
 
     // get learn state in memory, including pending and writing mutations
     // return true if some data is filled into writer
@@ -395,7 +396,8 @@ public:
                                    dsn::task_code callback_code,
                                    dsn::task_tracker *tracker,
                                    aio_handler &&callback,
-                                   int hash = 0) override;
+                                   int hash = 0,
+                                   int64_t *pending_size = nullptr) override;
 
     virtual void flush() override;
     virtual void flush_once() override;
@@ -450,7 +452,8 @@ public:
                                    dsn::task_code callback_code,
                                    dsn::task_tracker *tracker,
                                    aio_handler &&callback,
-                                   int hash = 0) override;
+                                   int hash = 0,
+                                   int64_t *pending_size = nullptr) override;
 
     virtual bool get_learn_state_in_memory(decree start_decree,
                                            binary_writer &writer) const override;
