@@ -139,7 +139,7 @@ public:
                                    dsn::task_tracker *tracker,
                                    aio_handler &&callback,
                                    int hash = 0,
-                                   int64_t *pending_size = nullptr) = 0;
+                                   bool *throttling_flag = nullptr) = 0;
 
     // get learn state in memory, including pending and writing mutations
     // return true if some data is filled into writer
@@ -387,11 +387,17 @@ public:
     mutation_log_shared(const std::string &dir,
                         int32_t max_log_file_mb,
                         bool force_flush,
+                        int64_t pending_limit = 0,
+                        int64_t quota_limit = 0,
                         perf_counter_wrapper *write_size_counter = nullptr)
         : mutation_log(dir, max_log_file_mb, dsn::gpid(), nullptr),
           _is_writing(false),
           _pending_write_start_offset(0),
           _force_flush(force_flush),
+          _pending_limit(pending_limit),
+          _quota_limit(quota_limit),
+          _quota_left(quota_limit),
+          _quota_left_calc_time(dsn_now_ms() / 1000),
           _write_size_counter(write_size_counter)
     {
     }
@@ -402,7 +408,7 @@ public:
                                    dsn::task_tracker *tracker,
                                    aio_handler &&callback,
                                    int hash = 0,
-                                   int64_t *pending_size = nullptr) override;
+                                   bool *throttling_flag = nullptr) override;
 
     virtual void flush() override;
     virtual void flush_once() override;
@@ -432,6 +438,11 @@ private:
     int64_t _pending_write_start_offset;
 
     bool _force_flush;
+    int64_t _pending_limit;
+    int64_t _quota_limit;
+    int64_t _quota_left;
+    int64_t _quota_left_calc_time;
+
     perf_counter_wrapper *_write_size_counter;
 };
 
@@ -459,7 +470,7 @@ public:
                                    dsn::task_tracker *tracker,
                                    aio_handler &&callback,
                                    int hash = 0,
-                                   int64_t *pending_size = nullptr) override;
+                                   bool *throttling_flag = nullptr) override;
 
     virtual bool get_learn_state_in_memory(decree start_decree,
                                            binary_writer &writer) const override;

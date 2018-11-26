@@ -295,6 +295,7 @@ private:
 
     perf_counter_wrapper _counter_shared_log_size;
     perf_counter_wrapper _counter_shared_log_recent_write_size;
+    perf_counter_wrapper _counter_shared_log_recent_throttling_count;
     perf_counter_wrapper _counter_recent_trigger_emergency_checkpoint_count;
 
     perf_counter_wrapper _counter_cold_backup_running_count;

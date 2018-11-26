@@ -50,8 +50,11 @@ namespace replication {
                                             dsn::task_tracker *tracker,
                                             aio_handler &&callback,
                                             int hash,
-                                            int64_t *pending_size)
+                                            bool *throttling_flag)
 {
+    if (throttling_flag) {
+        *throttling_flag = false;
+    }
     auto d = mu->data.header.decree;
     ::dsn::aio_task_ptr cb =
         callback ? file::create_aio_task(
@@ -85,13 +88,24 @@ namespace replication {
 
     // start to write if possible
     if (!_is_writing.load(std::memory_order_acquire)) {
-        write_pending_mutations(true);
-        if (pending_size) {
-            *pending_size = 0;
+        if (_quota_limit > 0) {
+            int64_t now_s = dsn_now_ms() / 1000;
+            if (now_s > _quota_left_calc_time) {
+                _quota_left = std::min(
+                    _quota_limit, _quota_left + _quota_limit * (_quota_left_calc_time - now_s));
+                _quota_left_calc_time = now_s;
+            }
+            _quota_left -= _pending_write->size();
+            if (throttling_flag && _quota_left <= 0) {
+                *throttling_flag = true;
+            }
         }
+        write_pending_mutations(true);
     } else {
-        if (pending_size) {
-            *pending_size = _pending_write->size();
+        if (_pending_limit > 0) {
+            if (throttling_flag && (int64_t)_pending_write->size() >= _pending_limit) {
+                *throttling_flag = true;
+            }
         }
         _slock.unlock();
     }
@@ -225,9 +239,12 @@ void mutation_log_shared::write_pending_mutations(bool release_lock_required)
                                              dsn::task_tracker *tracker,
                                              aio_handler &&callback,
                                              int hash,
-                                             int64_t *pending_size)
+                                             bool *throttling_flag)
 {
     dassert(nullptr == callback, "callback is not needed in private mutation log");
+    if (throttling_flag) {
+        *throttling_flag = false;
+    }
 
     _plock.lock();
 
@@ -257,13 +274,7 @@ void mutation_log_shared::write_pending_mutations(bool release_lock_required)
          static_cast<uint32_t>(_pending_write->data().size()) >= _batch_buffer_max_count ||
          flush_interval_expired())) {
         write_pending_mutations(true);
-        if (pending_size) {
-            *pending_size = 0;
-        }
     } else {
-        if (pending_size) {
-            *pending_size = _pending_write->size();
-        }
         _plock.unlock();
     }
 

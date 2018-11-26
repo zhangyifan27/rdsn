@@ -202,6 +202,11 @@ void replica_stub::install_perf_counters()
         "shared.log.recent.write.size",
         COUNTER_TYPE_VOLATILE_NUMBER,
         "shared log write size in the recent period");
+    _counter_shared_log_recent_throttling_count.init_app_counter(
+        "eon.replica_stub",
+        "shared.log.recent.throttling.count",
+        COUNTER_TYPE_VOLATILE_NUMBER,
+        "shared log throttling count in the recent period");
     _counter_recent_trigger_emergency_checkpoint_count.init_app_counter(
         "eon.replica_stub",
         "recent.trigger.emergency.checkpoint.count",
@@ -333,6 +338,8 @@ void replica_stub::initialize(const replication_options &opts, bool clear /* = f
     _log = new mutation_log_shared(_options.slog_dir,
                                    _options.log_shared_file_size_mb,
                                    _options.log_shared_force_flush,
+                                   _options.log_shared_throttling_pending_threshold_kb * 1000,
+                                   _options.log_shared_throttling_write_threshold_per_second,
                                    &_counter_shared_log_recent_write_size);
     ddebug("slog_dir = %s", _options.slog_dir.c_str());
 
@@ -463,6 +470,8 @@ void replica_stub::initialize(const replication_options &opts, bool clear /* = f
         _log = new mutation_log_shared(_options.slog_dir,
                                        _options.log_shared_file_size_mb,
                                        _options.log_shared_force_flush,
+                                       _options.log_shared_throttling_pending_threshold_kb * 1000,
+                                       _options.log_shared_throttling_write_threshold_per_second,
                                        &_counter_shared_log_recent_write_size);
         auto lerr = _log->open(nullptr, [this](error_code err) { this->handle_log_failure(err); });
         dassert(lerr == ERR_OK, "restart log service must succeed");
