@@ -92,7 +92,7 @@ namespace replication {
             int64_t now_s = dsn_now_ms() / 1000;
             if (now_s > _quota_left_calc_time) {
                 _quota_left = std::min(
-                    _quota_limit, _quota_left + _quota_limit * (_quota_left_calc_time - now_s));
+                    _quota_limit, _quota_left + _quota_limit * (now_s - _quota_left_calc_time));
                 _quota_left_calc_time = now_s;
             }
             _quota_left -= _pending_write->size();
