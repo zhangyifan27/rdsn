@@ -102,8 +102,9 @@ namespace replication {
         }
         write_pending_mutations(true);
     } else {
-        if (_pending_limit > 0) {
-            if (throttling_flag && (int64_t)_pending_write->size() >= _pending_limit) {
+        if (throttling_flag) {
+            if ((_quota_limit > 0 && _quota_left <= 0) ||
+                (_pending_limit > 0 && (int64_t)_pending_write->size() >= _pending_limit)) {
                 *throttling_flag = true;
             }
         }

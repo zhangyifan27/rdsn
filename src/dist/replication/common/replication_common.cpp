@@ -93,7 +93,7 @@ replication_options::replication_options()
     log_shared_batch_buffer_kb = 0;
     log_shared_force_flush = false;
     log_shared_throttling_pending_threshold_kb = 0;
-    log_shared_throttling_write_threshold_per_second = 0;
+    log_shared_throttling_write_threshold_mb = 0;
     log_shared_throttling_delay_ms = 0;
 
     config_sync_disabled = false;
@@ -448,11 +448,11 @@ void replication_options::initialize()
                                          "log_shared_throttling_pending_threshold_kb",
                                          log_shared_throttling_pending_threshold_kb,
                                          "log_shared_throttling_pending_threshold_kb");
-    log_shared_throttling_write_threshold_per_second =
+    log_shared_throttling_write_threshold_mb =
         (int)dsn_config_get_value_uint64("replication",
-                                         "log_shared_throttling_write_threshold_per_second",
-                                         log_shared_throttling_write_threshold_per_second,
-                                         "log_shared_throttling_write_threshold_per_second");
+                                         "log_shared_throttling_write_threshold_mb",
+                                         log_shared_throttling_write_threshold_mb,
+                                         "log_shared_throttling_write_threshold_mb (per second)");
     log_shared_throttling_delay_ms =
         (int)dsn_config_get_value_uint64("replication",
                                          "log_shared_throttling_delay_ms",
