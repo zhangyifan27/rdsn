@@ -95,7 +95,7 @@ namespace replication {
                     _quota_limit, _quota_left + _quota_limit * (now_s - _quota_left_calc_time));
                 _quota_left_calc_time = now_s;
             }
-            _quota_left -= _pending_write->size();
+            _quota_left -= (int64_t)_pending_write->size();
             if (throttling_flag && _quota_left <= 0) {
                 *throttling_flag = true;
             }
