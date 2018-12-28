@@ -57,10 +57,34 @@ meta_server_failure_detector::meta_server_failure_detector(meta_service *svc)
         _fd_opts->distributed_lock_service_type.c_str(), PROVIDER_TYPE_MAIN);
     error_code err = _lock_svc->initialize(_fd_opts->distributed_lock_service_args);
     dassert(err == ERR_OK, "init distributed_lock_service failed, err = %s", err.to_string());
+    _cli_fd_ignore_handle = dsn::command_manager::instance().register_app_command(
+        {"fd.ignore"},
+        "fd.ignore: set node address to which not response heartbeat",
+        "fd.ignore [ip:port|none]",
+        [this](const std::vector<std::string> &args) {
+            if (args.size() == 0) {
+                return _fd_ignore_node.to_std_string();
+            } else {
+                if (args[0] == "none") {
+                    _fd_ignore_node.set_invalid();
+                    return std::string("OK");
+                } else if (_fd_ignore_node.from_string_ipv4(args[0].c_str())) {
+                    ddebug("set fd_ignore succeed: %s", _fd_ignore_node.to_string());
+                    return std::string("OK");
+                } else {
+                    derror("set fd_ignore failed: invalid address %s", args[0].c_str());
+                    return std::string("ERROR: invalid address");
+                }
+            }
+        });
 }
 
 meta_server_failure_detector::~meta_server_failure_detector()
 {
+    if (_cli_fd_ignore_handle != nullptr) {
+        dsn::command_manager::instance().deregister_command(_cli_fd_ignore_handle);
+        _cli_fd_ignore_handle = nullptr;
+    }
     if (_lock_grant_task)
         _lock_grant_task->cancel(true);
     if (_lock_expire_task)
@@ -245,6 +269,11 @@ void meta_server_failure_detector::on_ping(const fd::beacon_msg &beacon,
     ack.time = beacon.time;
     ack.this_node = beacon.to_addr;
     ack.allowed = true;
+
+    if (!_fd_ignore_node.is_invalid() && _fd_ignore_node == beacon.from_addr) {
+        dwarn("%s is fd_ignore_node, don't response to it's beacon", beacon.from_addr.to_string());
+        return;
+    }
 
     if (beacon.__isset.start_time && !update_stability_stat(beacon)) {
         dwarn("%s is unstable, don't response to it's beacon", beacon.from_addr.to_string());

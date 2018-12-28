@@ -37,6 +37,7 @@
 
 #include <dsn/dist/failure_detector.h>
 #include <dsn/dist/distributed_lock_service.h>
+#include <dsn/tool-api/command_manager.h>
 
 #include "dist/replication/common/replication_common.h"
 #include "dist/replication/meta_server/meta_options.h"
@@ -138,6 +139,9 @@ private:
     // record the start time of a replica-server, check if it crashed frequently
     mutable zlock _map_lock;
     stability_map _stablity;
+
+    dsn_handle_t _cli_fd_ignore_handle;
+    dsn::rpc_address _fd_ignore_node;
 
 public:
     /* these two functions are for test */
