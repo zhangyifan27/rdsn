@@ -381,6 +381,7 @@ private:
     perf_counter_wrapper _counter_private_log_size;
     perf_counter_wrapper _counter_recent_write_throttling_delay_count;
     perf_counter_wrapper _counter_recent_write_throttling_reject_count;
+    perf_counter_wrapper _counter_recent_read_secondary_count;
 
     dsn::task_tracker _tracker;
     // the thread access checker

@@ -75,6 +75,10 @@ replica::replica(
     _counter_recent_write_throttling_reject_count.init_app_counter(
         "eon.replica", counter_str.c_str(), COUNTER_TYPE_VOLATILE_NUMBER, counter_str.c_str());
 
+    counter_str = fmt::format("recent.read.secondary.count@{}", gpid);
+    _counter_recent_read_secondary_count.init_app_counter(
+        "eon.replica", counter_str.c_str(), COUNTER_TYPE_VOLATILE_NUMBER, counter_str.c_str());
+
     if (need_restore) {
         // add an extra env for restore
         _extra_envs.insert(
@@ -145,10 +149,11 @@ void replica::on_client_read(task_code code, dsn::message_ex *request)
         return;
     }
 
-    if (status() != partition_status::PS_PRIMARY ||
-
-        // a small window where the state is not the latest yet
-        last_committed_decree() < _primary_states.last_prepare_decree_on_new_primary) {
+    if (status() == partition_status::PS_SECONDARY && request->header->client.thread_hash == -1) {
+        _counter_recent_read_secondary_count->increment();
+    } else if (status() != partition_status::PS_PRIMARY ||
+               // a small window where the state is not the latest yet
+               last_committed_decree() < _primary_states.last_prepare_decree_on_new_primary) {
         if (status() != partition_status::PS_PRIMARY) {
             derror("%s: invalid status: partition_status=%s", name(), enum_to_string(status()));
             response_client_message(true, request, ERR_INVALID_STATE);
