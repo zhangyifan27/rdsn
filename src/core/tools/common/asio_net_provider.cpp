@@ -154,7 +154,7 @@ void asio_network_provider::do_accept()
                                          (std::shared_ptr<boost::asio::ip::tcp::socket> &)socket,
                                          null_parser,
                                          false);
-                on_server_session_accepted(s);
+                //on_server_session_accepted(s);
 
                 // when server connection threshold is hit, close the session, otherwise accept it
                 if (connection_threshold(s->remote_address())) {
