@@ -14,6 +14,7 @@ set(MY_PROJ_LIBS
     dsn.block_service
     dsn.block_service.local
     dsn.block_service.fds
+    dsn.block_service.hdfs
     dsn.failure_detector
     dsn.replication.zookeeper_provider
     dsn_dist_cmd
@@ -27,6 +28,7 @@ set(MY_PROJ_LIBS
     PocoNetSSL
     PocoJSON
     crypto
+    hdfs
     )
 
 # Extra files that will be installed
