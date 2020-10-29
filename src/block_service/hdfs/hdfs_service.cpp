@@ -34,15 +34,21 @@ error_code hdfs_service::initialize(const std::vector<std::string> &args)
     }
     _hdfs_nn = args[0];
     _hdfs_path = args[1];
+    return create_fs();
+}
 
+error_code hdfs_service::create_fs()
+{
+    ddebug_f("start to create fs.");
+    _fs = nullptr;
     hdfsBuilder *builder = hdfsNewBuilder();
     hdfsBuilderSetNameNode(builder, _hdfs_nn.c_str());
     _fs = hdfsBuilderConnect(builder);
-    if (_fs == nullptr) {
+    if (!_fs) {
         derror_f("Fail to connect hdfs name node {}.", _hdfs_nn);
         return ERR_FS_INTERNAL;
     }
-
+    ddebug_f("Succeed to connect hdfs name node {}.", _hdfs_nn);
     return ERR_OK;
 }
 
@@ -69,6 +75,12 @@ dsn::task_ptr hdfs_service::list_dir(const ls_request &req,
     auto list_dir_background = [this, req, tsk]() {
         std::string path = ::dsn::utils::filesystem::path_combine(_hdfs_path, req.dir_name);
         ls_response resp;
+        if (!_fs && create_fs() != ERR_OK) {
+            resp.err = ERR_FS_INTERNAL;
+            tsk->enqueue_with(resp);
+            return;
+        }
+
         if (hdfsExists(_fs, path.c_str()) == -1) {
             derror_f("HDFS list directory failed: path {} not found.", path);
             resp.err = ERR_OBJECT_NOT_FOUND;
@@ -153,6 +165,11 @@ dsn::task_ptr hdfs_service::remove_path(const remove_path_request &req,
     auto remove_path_background = [this, req, tsk]() {
         std::string path = ::dsn::utils::filesystem::path_combine(_hdfs_path, req.path);
         remove_path_response resp;
+        if (!_fs && create_fs() != ERR_OK) {
+            resp.err = ERR_FS_INTERNAL;
+            tsk->enqueue_with(resp);
+            return;
+        }
 
         // Check if path exists.
         if (hdfsExists(_fs, path.c_str()) == -1) {
@@ -193,11 +210,13 @@ hdfs_file_object::hdfs_file_object(hdfs_service *s, const std::string &name)
 
 error_code hdfs_file_object::get_file_meta()
 {
+    if (!_service->get_fs() && _service->create_fs() != ERR_OK) {
+        return ERR_FS_INTERNAL;
+    }
     if (hdfsExists(_service->get_fs(), file_name().c_str()) == -1) {
         dwarn_f("HDFS file {} does not exist.", file_name());
         return ERR_OBJECT_NOT_FOUND;
     }
-
     hdfsFileInfo *info = hdfsGetPathInfo(_service->get_fs(), file_name().c_str());
     if (info == nullptr) {
         derror_f("HDFS get file info failed, file: {}.", file_name());
@@ -216,6 +235,9 @@ error_code hdfs_file_object::write_data_in_batches(const char *data,
                                                    uint64_t &written_size)
 {
     written_size = 0;
+    if (!_service->get_fs() && _service->create_fs() != ERR_OK) {
+        return ERR_FS_INTERNAL;
+    }
     hdfsFile writeFile =
         hdfsOpenFile(_service->get_fs(), file_name().c_str(), O_WRONLY | O_CREAT, 0, 0, 0);
     if (!writeFile) {
@@ -317,6 +339,9 @@ error_code hdfs_file_object::read_data_in_batches(uint64_t start_pos,
             derror_f("Failed to read remote file {}", file_name());
             return err;
         }
+    }
+    if (!_service->get_fs() && _service->create_fs() != ERR_OK) {
+        return ERR_FS_INTERNAL;
     }
 
     hdfsFile readFile = hdfsOpenFile(_service->get_fs(), file_name().c_str(), O_RDONLY, 0, 0, 0);
