@@ -16,8 +16,8 @@ static std::string example_name_node = "<hdfs_name_none>";
 static std::string example_backup_path = "<hdfs_path>";
 // Please modify following paras to enable hdfs_service_test,
 // or hdfs_service_test will be skipped and return true.
-static std::string name_node = "<hdfs_name_none>";
-static std::string backup_path = "<hdfs_path>";
+static std::string name_node = "hdfs://tjwqstaging-hdd";
+static std::string backup_path = "/user/s_kudu_backups/pegasus_test";
 
 DSN_DEFINE_uint32("replication",
                   test_hdfs_num_total_files,

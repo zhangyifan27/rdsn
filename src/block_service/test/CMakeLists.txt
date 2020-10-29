@@ -16,7 +16,7 @@ set(MY_PROJ_LIBS
     PocoJSON
     gtest
     gtest_main
-    hdfs
+    hdfs3
     )
 
 set(MY_BINPLACES

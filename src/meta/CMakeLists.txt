@@ -28,7 +28,7 @@ set(MY_PROJ_LIBS
     PocoNetSSL
     PocoJSON
     crypto
-    hdfs
+    hdfs3
     )
 
 # Extra files that will be installed

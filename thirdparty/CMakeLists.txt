@@ -79,7 +79,7 @@ ExternalProject_Add(gperftools
         BUILD_IN_SOURCE 1
         )
 
-file(MAKE_DIRECTORY ${TP_OUTPUT}/include/hdfs)
+#[[file(MAKE_DIRECTORY ${TP_OUTPUT}/include/hdfs)
 ExternalProject_Add(hadoop
         URL ${OSS_URL_PREFIX}/hadoop-3.1.4.tar.gz
         https://mirrors.ocf.berkeley.edu/apache/hadoop/common/hadoop-3.1.4/hadoop-3.1.4.tar.gz
@@ -88,7 +88,7 @@ ExternalProject_Add(hadoop
         BUILD_COMMAND ""
         INSTALL_COMMAND cp -R include/. ${TP_OUTPUT}/include/hdfs && cp -R lib/native/. ${TP_OUTPUT}/lib
         BUILD_IN_SOURCE 1
-        )
+        )]]
 
 # header-only
 ExternalProject_Add(rapidjson
@@ -334,6 +334,19 @@ ExternalProject_Add(cyrus-sasl
         BUILD_IN_SOURCE 1
         )
 add_dependencies(cyrus-sasl krb5)
+
+# libhdfs3
+ExternalProject_Add(hawq
+        GIT_REPOSITORY https://git.n.xiaomi.com/zhangyifan8/hawq.git
+        GIT_TAG 49ffd85c9d9e1dded67e99a094625e275862866f
+        CONFIGURE_COMMAND ./depends/libhdfs3/bootstrap --prefix=${TP_OUTPUT}
+        --enable-boost
+        --dependency=${TP_OUTPUT}
+        BUILD_COMMAND make
+        INSTALL_COMMAND make install
+        DEPENDS boost krb5
+        BUILD_IN_SOURCE 1
+        )
 
 ExternalProject_Add(http-parser
         URL ${OSS_URL_PREFIX}/http-parser-2.9.4.zip
