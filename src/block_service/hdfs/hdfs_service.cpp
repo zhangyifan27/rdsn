@@ -45,7 +45,8 @@ error_code hdfs_service::create_fs()
     hdfsBuilderSetNameNode(builder, _hdfs_nn.c_str());
     _fs = hdfsBuilderConnect(builder);
     if (!_fs) {
-        derror_f("Fail to connect hdfs name node {}.", _hdfs_nn);
+        derror_f(
+            "Fail to connect hdfs name node {}, error: {}.", _hdfs_nn, utils::safe_strerror(errno));
         return ERR_FS_INTERNAL;
     }
     ddebug_f("Succeed to connect hdfs name node {}.", _hdfs_nn);
@@ -241,7 +242,9 @@ error_code hdfs_file_object::write_data_in_batches(const char *data,
     hdfsFile writeFile =
         hdfsOpenFile(_service->get_fs(), file_name().c_str(), O_WRONLY | O_CREAT, 0, 0, 0);
     if (!writeFile) {
-        derror_f("Failed to open hdfs file {} for writting.", file_name());
+        derror_f("Failed to open hdfs file {} for writting, error: {}.",
+                 file_name(),
+                 utils::safe_strerror(errno));
         return ERR_FS_INTERNAL;
     }
     uint64_t cur_pos = 0;
@@ -251,7 +254,9 @@ error_code hdfs_file_object::write_data_in_batches(const char *data,
         tSize num_written_bytes = hdfsWrite(
             _service->get_fs(), writeFile, (void *)(data + cur_pos), static_cast<tSize>(write_len));
         if (num_written_bytes == -1) {
-            derror_f("Failed to write hdfs file {}.", file_name());
+            derror_f("Failed to write hdfs file {}, error: {}.",
+                     file_name(),
+                     utils::safe_strerror(errno));
             hdfsCloseFile(_service->get_fs(), writeFile);
             return ERR_FS_INTERNAL;
         }
@@ -346,7 +351,9 @@ error_code hdfs_file_object::read_data_in_batches(uint64_t start_pos,
 
     hdfsFile readFile = hdfsOpenFile(_service->get_fs(), file_name().c_str(), O_RDONLY, 0, 0, 0);
     if (!readFile) {
-        derror_f("Failed to open hdfs file {} for reading.", file_name());
+        derror_f("Failed to open hdfs file {} for reading, error: {}.",
+                 file_name(),
+                 utils::safe_strerror(errno));
         return ERR_FS_INTERNAL;
     }
     char *buf = new char[_size + 1];
