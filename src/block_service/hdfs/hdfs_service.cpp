@@ -20,8 +20,15 @@ namespace block_service {
 DEFINE_THREAD_POOL_CODE(THREAD_POOL_HDFS_SERVICE)
 DEFINE_TASK_CODE(LPC_HDFS_SERVICE_CALL, TASK_PRIORITY_COMMON, THREAD_POOL_HDFS_SERVICE)
 
-DSN_DEFINE_uint64("replication", hdfs_read_batch_size_bytes, 64 << 10, "hdfs read batch size");
-DSN_DEFINE_uint64("replication", hdfs_write_batch_size_bytes, 64 << 10, "hdfs write batch size");
+DSN_DEFINE_uint64("replication",
+                  hdfs_read_batch_size_bytes,
+                  64 << 20,
+                  "hdfs read batch size, the default value is 64MB");
+
+DSN_DEFINE_uint64("replication",
+                  hdfs_write_batch_size_bytes,
+                  64 << 20,
+                  "hdfs write batch size, the default value is 64MB");
 
 hdfs_service::hdfs_service() {}
 
@@ -313,7 +320,7 @@ dsn::task_ptr hdfs_file_object::upload(const upload_request &req,
         if (is.is_open()) {
             int64_t file_sz = 0;
             dsn::utils::filesystem::file_size(req.input_local_name, file_sz);
-            char buffer[file_sz + 1];
+            char *buffer = new char[file_sz + 1];
             is.read(buffer, file_sz);
             is.close();
             resp.err = write_data_in_batches(buffer, file_sz, resp.uploaded_size);

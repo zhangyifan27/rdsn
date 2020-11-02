@@ -1,10 +1,9 @@
-#include <gtest/gtest.h>
-
 #include <dsn/dist/block_service.h>
 #include <dsn/utility/filesystem.h>
 #include <dsn/utility/flags.h>
 #include <dsn/utility/rand.h>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <memory>
 
 #include "block_service/hdfs/hdfs_service.h"
@@ -19,8 +18,10 @@ static std::string example_backup_path = "<hdfs_path>";
 static std::string name_node = "hdfs://tjwqstaging-hdd";
 static std::string backup_path = "/user/s_kudu_backups/pegasus_test";
 
-DSN_DEFINE_uint32("replication",
-                  test_hdfs_num_total_files,
+DSN_DEFINE_uint32("hdfs_test", num_test_file_lines, 4096, "number of lines in test file");
+
+DSN_DEFINE_uint32("hdfs_test",
+                  num_total_files_for_hdfs_concurrent_test,
                   64,
                   "number of total files for hdfs concurrent test");
 
@@ -30,16 +31,12 @@ protected:
     virtual void SetUp() override;
     virtual void TearDown() override;
     void generate_test_file(const char *filename);
-
-    std::string local_test_file;
-    std::string remote_test_file;
-    int64_t test_file_size;
 };
 
 void HDFSClientTest::generate_test_file(const char *filename)
 {
     // generate a local test file.
-    int lines = rand::next_u32(1000, 2000);
+    int lines = FLAGS_num_test_file_lines;
     FILE *fp = fopen(filename, "wb");
     for (int i = 0; i < lines; ++i) {
         fprintf(fp, "%04d_this_is_a_simple_test_file\n", i);
@@ -47,15 +44,7 @@ void HDFSClientTest::generate_test_file(const char *filename)
     fclose(fp);
 }
 
-void HDFSClientTest::SetUp()
-{
-    local_test_file = "test_file";
-    remote_test_file = "hdfs_client_test/test_file";
-    test_file_size = 0;
-
-    generate_test_file(local_test_file.c_str());
-    dsn::utils::filesystem::file_size(local_test_file, test_file_size);
-}
+void HDFSClientTest::SetUp() {}
 
 void HDFSClientTest::TearDown() {}
 
@@ -70,6 +59,13 @@ TEST_F(HDFSClientTest, test_basic_operation)
     std::vector<std::string> args = {name_node, backup_path};
     std::shared_ptr<hdfs_service> s = std::make_shared<hdfs_service>();
     ASSERT_EQ(dsn::ERR_OK, s->initialize(args));
+
+    std::string local_test_file = "test_file";
+    std::string remote_test_file = "hdfs_client_test/test_file";
+    int64_t test_file_size = 0;
+
+    generate_test_file(local_test_file.c_str());
+    dsn::utils::filesystem::file_size(local_test_file, test_file_size);
 
     create_file_response cf_resp;
     ls_response l_resp;
@@ -125,7 +121,7 @@ TEST_F(HDFSClientTest, test_basic_operation)
         ->wait();
     ASSERT_EQ(dsn::ERR_OK, cf_resp.err);
     ASSERT_EQ(test_file_size, cf_resp.file_handle->get_size());
-    std::string local_file_for_download = "test_file_2";
+    std::string local_file_for_download = "test_file_d";
     cf_resp.file_handle
         ->download(download_request{local_file_for_download, 0, -1},
                    LPC_TEST_HDFS,
@@ -187,6 +183,10 @@ TEST_F(HDFSClientTest, test_basic_operation)
     ASSERT_EQ(dsn::ERR_OK, r_resp.err);
     ASSERT_EQ(10, r_resp.buffer.length());
     ASSERT_EQ(0, memcmp(r_resp.buffer.data(), test_buffer + 5, 10));
+
+    // clean up local test files.
+    utils::filesystem::remove_path(local_test_file);
+    utils::filesystem::remove_path(local_file_for_download);
 }
 
 TEST_F(HDFSClientTest, test_concurrent_upload_download)
@@ -199,7 +199,7 @@ TEST_F(HDFSClientTest, test_concurrent_upload_download)
     std::shared_ptr<hdfs_service> s = std::make_shared<hdfs_service>();
     ASSERT_EQ(dsn::ERR_OK, s->initialize(args));
 
-    int total_files = FLAGS_test_hdfs_num_total_files;
+    int total_files = FLAGS_num_total_files_for_hdfs_concurrent_test;
     std::vector<std::string> local_file_names;
     std::vector<std::string> remote_file_names;
     std::vector<std::string> downloaded_file_names;
@@ -309,5 +309,11 @@ TEST_F(HDFSClientTest, test_concurrent_upload_download)
         for (int i = 0; i < total_files; ++i) {
             callbacks[i]->wait();
         }
+    }
+
+    // clean up local test files.
+    for (int i = 0; i < total_files; ++i) {
+        utils::filesystem::remove_path(local_file_names[i]);
+        utils::filesystem::remove_path(downloaded_file_names[i]);
     }
 }

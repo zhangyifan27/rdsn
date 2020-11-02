@@ -21,7 +21,6 @@ public:
                                    dsn::task_code code,
                                    const ls_callback &cb,
                                    dsn::task_tracker *tracker) override;
-
     virtual dsn::task_ptr create_file(const create_file_request &req,
                                       dsn::task_code code,
                                       const create_file_callback &cb,
@@ -43,32 +42,25 @@ class hdfs_file_object : public block_file
 {
 public:
     hdfs_file_object(hdfs_service *s, const std::string &name);
-
     virtual ~hdfs_file_object();
-
     virtual uint64_t get_size() override { return _size; }
     virtual const std::string &get_md5sum() override { return _md5sum; }
-
     virtual dsn::task_ptr write(const write_request &req,
                                 dsn::task_code code,
                                 const write_callback &cb,
                                 dsn::task_tracker *tracker) override;
-
     virtual dsn::task_ptr read(const read_request &req,
                                dsn::task_code code,
                                const read_callback &cb,
                                dsn::task_tracker *tracker) override;
-
     virtual dsn::task_ptr upload(const upload_request &req,
                                  dsn::task_code code,
                                  const upload_callback &cb,
                                  dsn::task_tracker *tracker) override;
-
     virtual dsn::task_ptr download(const download_request &req,
                                    dsn::task_code code,
                                    const download_callback &cb,
                                    dsn::task_tracker *tracker) override;
-
     error_code get_file_meta();
 
 private:
