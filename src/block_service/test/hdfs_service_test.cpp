@@ -13,13 +13,15 @@ using namespace dsn::dist::block_service;
 
 static std::string example_name_node = "<hdfs_name_none>";
 static std::string example_backup_path = "<hdfs_path>";
-// Please modify following paras to enable hdfs_service_test,
+// Please modify following paras in 'config-test.ini' to enable hdfs_service_test,
 // or hdfs_service_test will be skipped and return true.
-static std::string name_node = "hdfs://tjwqstaging-hdd";
-static std::string backup_path = "/user/s_kudu_backups/pegasus_test";
+DSN_DEFINE_string("hdfs_test", test_name_node, "<hdfs_name_none>", "hdfs name node");
+DSN_DEFINE_string("hdfs_test",
+                  test_backup_path,
+                  "<hdfs_path>",
+                  "path for uploading and downloading test files");
 
 DSN_DEFINE_uint32("hdfs_test", num_test_file_lines, 4096, "number of lines in test file");
-
 DSN_DEFINE_uint32("hdfs_test",
                   num_total_files_for_hdfs_concurrent_test,
                   64,
@@ -31,6 +33,8 @@ protected:
     virtual void SetUp() override;
     virtual void TearDown() override;
     void generate_test_file(const char *filename);
+    std::string name_node;
+    std::string backup_path;
 };
 
 void HDFSClientTest::generate_test_file(const char *filename)
@@ -44,7 +48,11 @@ void HDFSClientTest::generate_test_file(const char *filename)
     fclose(fp);
 }
 
-void HDFSClientTest::SetUp() {}
+void HDFSClientTest::SetUp()
+{
+    name_node = FLAGS_test_name_node;
+    backup_path = FLAGS_test_backup_path;
+}
 
 void HDFSClientTest::TearDown() {}
 
