@@ -85,29 +85,28 @@ block_filesystem *block_service_manager::get_or_create_block_filesystem(const st
     return fs;
 }
 
-static create_file_response create_block_file_sync(const std::string &remote_file_path,
-                                                   bool ignore_meta,
-                                                   block_filesystem *fs,
-                                                   task_tracker *tracker)
+static create_file_response
+create_block_file_sync(const std::string &remote_file_path, bool ignore_meta, block_filesystem *fs)
 {
     create_file_response ret;
     fs->create_file(create_file_request{remote_file_path, ignore_meta},
                     TASK_CODE_EXEC_INLINED,
                     [&ret](const create_file_response &resp) { ret = resp; },
-                    tracker);
-    tracker->wait_outstanding_tasks();
+                    nullptr)
+        ->wait();
+    ;
     return ret;
 }
 
-static download_response
-download_block_file_sync(const std::string &local_file_path, block_file *bf, task_tracker *tracker)
+static download_response download_block_file_sync(const std::string &local_file_path,
+                                                  block_file *bf)
 {
     download_response ret;
     bf->download(download_request{local_file_path, 0, -1},
                  TASK_CODE_EXEC_INLINED,
                  [&ret](const download_response &resp) { ret = resp; },
-                 tracker);
-    tracker->wait_outstanding_tasks();
+                 nullptr)
+        ->wait();
     return ret;
 }
 
@@ -125,12 +124,11 @@ error_code block_service_manager::download_file(const std::string &remote_dir,
         return ERR_PATH_ALREADY_EXIST;
     }
 
-    task_tracker tracker;
+    // task_tracker tracker;
 
     // Create a block_file object.
     const std::string remote_file_name = utils::filesystem::path_combine(remote_dir, file_name);
-    auto create_resp =
-        create_block_file_sync(remote_file_name, false /*ignore file meta*/, fs, &tracker);
+    auto create_resp = create_block_file_sync(remote_file_name, false /*ignore file meta*/, fs);
     error_code err = create_resp.err;
     if (err != ERR_OK) {
         derror_f("create file({}) failed with error({})", remote_file_name, err.to_string());
@@ -138,7 +136,7 @@ error_code block_service_manager::download_file(const std::string &remote_dir,
     }
     block_file_ptr bf = create_resp.file_handle;
 
-    download_response resp = download_block_file_sync(local_file_name, bf.get(), &tracker);
+    download_response resp = download_block_file_sync(local_file_name, bf.get());
     if (resp.err != ERR_OK) {
         // during bulk load process, ERR_OBJECT_NOT_FOUND will be considered as a recoverable
         // error, however, if file damaged on remote file provider, bulk load should stop,
