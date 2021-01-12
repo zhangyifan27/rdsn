@@ -109,44 +109,35 @@ error_code replica::download_checkpoint(const configuration_restore_request &req
     }
 
     // download checkpoint files
-    task_tracker tracker;
     for (const auto &f_meta : backup_metadata.files) {
-        tasking::enqueue(
-            TASK_CODE_EXEC_INLINED,
-            &tracker,
-            [this, &err, remote_chkpt_dir, local_chkpt_dir, f_meta, fs]() {
-                uint64_t f_size = 0;
-                error_code download_err = _stub->_block_service_manager.download_file(
-                    remote_chkpt_dir, local_chkpt_dir, f_meta.name, fs, f_size);
-                const std::string file_name =
-                    utils::filesystem::path_combine(local_chkpt_dir, f_meta.name);
-                if (download_err == ERR_OK || download_err == ERR_PATH_ALREADY_EXIST) {
-                    if (!utils::filesystem::verify_file(file_name, f_meta.md5, f_meta.size)) {
-                        download_err = ERR_CORRUPTION;
-                    } else if (download_err == ERR_PATH_ALREADY_EXIST) {
-                        download_err = ERR_OK;
-                        f_size = f_meta.size;
-                    }
-                }
+        uint64_t f_size = 0;
+        error_code download_err = _stub->_block_service_manager.download_file(
+            remote_chkpt_dir, local_chkpt_dir, f_meta.name, fs, f_size);
+        const std::string file_name = utils::filesystem::path_combine(local_chkpt_dir, f_meta.name);
+        if (download_err == ERR_OK || download_err == ERR_PATH_ALREADY_EXIST) {
+            if (!utils::filesystem::verify_file(file_name, f_meta.md5, f_meta.size)) {
+                download_err = ERR_CORRUPTION;
+            } else if (download_err == ERR_PATH_ALREADY_EXIST) {
+                download_err = ERR_OK;
+                f_size = f_meta.size;
+            }
+        }
 
-                if (download_err != ERR_OK) {
-                    derror_replica(
-                        "failed to download file({}), error = {}", f_meta.name, download_err);
-                    // ERR_CORRUPTION means we should rollback restore, so we can't change err if it
-                    // is ERR_CORRUPTION now, otherwise it will be overridden by other errors
-                    if (err != ERR_CORRUPTION) {
-                        err = download_err;
-                        return;
-                    }
-                }
+        if (download_err != ERR_OK) {
+            derror_replica("failed to download file({}), error = {}", f_meta.name, download_err);
+            // ERR_CORRUPTION means we should rollback restore, so we can't change err if it
+            // is ERR_CORRUPTION now, otherwise it will be overridden by other errors
+            if (err != ERR_CORRUPTION) {
+                err = download_err;
+                break;
+            }
+        }
 
-                // update progress if download file succeed
-                update_restore_progress(f_size);
-                // report current status to meta server
-                report_restore_status_to_meta();
-            });
+        // update progress if download file succeed
+        update_restore_progress(f_size);
+        // report current status to meta server
+        report_restore_status_to_meta();
     }
-    tracker.wait_outstanding_tasks();
 
     // clear useless files for restore.
     // if err != ERR_OK, the entire directory of this replica will be deleted later.
