@@ -56,14 +56,7 @@ hdfs_service::hdfs_service() { _read_token_bucket.reset(new folly::DynamicTokenB
 
 hdfs_service::~hdfs_service()
 {
-    ddebug("Try to disconnect hdfs.");
-    int result = hdfsDisconnect(_fs);
-    if (result == -1) {
-        derror_f("Fail to disconnect from the hdfs file system, error: {}.",
-                 utils::safe_strerror(errno));
-    }
-    // Even if there is an error, the resources associated with the hdfsFS will be freed.
-    _fs = nullptr;
+    // close_fs();
 }
 
 error_code hdfs_service::initialize(const std::vector<std::string> &args)
@@ -93,6 +86,18 @@ error_code hdfs_service::create_fs()
     }
     ddebug_f("Succeed to connect hdfs name node {}.", _hdfs_name_node);
     return ERR_OK;
+}
+
+void hdfs_service::close_fs()
+{
+    ddebug("Try to disconnect hdfs.");
+    int result = hdfsDisconnect(_fs);
+    if (result == -1) {
+        derror_f("Fail to disconnect from the hdfs file system, error: {}.",
+                 utils::safe_strerror(errno));
+    }
+    // Even if there is an error, the resources associated with the hdfsFS will be freed.
+    _fs = nullptr;
 }
 
 std::string hdfs_service::get_hdfs_entry_name(const std::string &hdfs_path)

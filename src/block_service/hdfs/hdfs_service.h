@@ -36,6 +36,7 @@ class hdfs_service : public block_filesystem
 public:
     hdfs_service();
     error_code create_fs();
+    void close_fs();
     hdfsFS get_fs() { return _fs; }
 
     ~hdfs_service();
