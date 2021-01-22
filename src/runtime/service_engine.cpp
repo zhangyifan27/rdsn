@@ -221,15 +221,11 @@ void service_engine::start_node(service_app_spec &app_spec)
     auto it = _nodes_by_app_id.find(app_spec.id);
     if (it == _nodes_by_app_id.end()) {
         for (auto p : app_spec.ports) {
-            // union to existing node if any port is shared
-            if (_nodes_by_app_port.find(p) != _nodes_by_app_port.end()) {
-                service_node *n = _nodes_by_app_port[p];
-
+            if (_app_ports.find(p) != _app_ports.end()) {
                 dassert(false,
-                        "network port %d usage confliction for %s vs %s, "
+                        "network port %d usage confliction for %s, "
                         "please reconfig",
                         p,
-                        n->full_name(),
                         app_spec.full_name.c_str());
             }
         }
@@ -240,7 +236,7 @@ void service_engine::start_node(service_app_spec &app_spec)
 
         _nodes_by_app_id[node->id()] = node;
         for (auto p1 : node->spec().ports) {
-            _nodes_by_app_port[p1] = node.get();
+            _app_ports.emplace(p1);
         }
 
         return;
