@@ -236,6 +236,7 @@ void nfs_service_impl::close_file() // release out-of-date file handle
         if (fptr->file_access_count == 0 &&
             dsn_now_ms() - fptr->last_access_time > (uint64_t)FLAGS_file_close_expire_time_ms) {
             dinfo("nfs: close file handle %s", it->first.c_str());
+            it->second->close_file();
             it = _handles_map.erase(it);
         } else
             it++;

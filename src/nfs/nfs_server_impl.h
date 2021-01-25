@@ -96,11 +96,7 @@ private:
         {
         }
 
-        ~file_handle_info_on_server()
-        {
-            error_code err = file::close(file_handle);
-            dassert(err == ERR_OK, "file::close failed, err = %s", err.to_string());
-        }
+        void close_file() { file::close(file_handle); }
     };
 
     void internal_read_callback(error_code err, size_t sz, callback_para &cp);
