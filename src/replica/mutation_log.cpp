@@ -694,16 +694,6 @@ void mutation_log::close()
     // make all data is on disk
     flush();
 
-    {
-        zauto_lock l(_lock);
-
-        // close current log file
-        if (nullptr != _current_log_file) {
-            _current_log_file->close();
-            _current_log_file = nullptr;
-        }
-    }
-
     // reset all states
     init_states();
 }
