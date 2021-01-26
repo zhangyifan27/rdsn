@@ -34,7 +34,7 @@
 namespace dsn {
 namespace replication {
 
-log_file::~log_file() { close(); }
+log_file::~log_file() {}
 /*static */ log_file_ptr log_file::open_read(const char *path, /*out*/ error_code &err)
 {
     char splitters[] = {'\\', '/', 0};

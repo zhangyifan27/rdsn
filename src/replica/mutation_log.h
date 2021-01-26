@@ -395,8 +395,8 @@ public:
 
     virtual ~mutation_log_shared() override
     {
-        close();
         _tracker.cancel_outstanding_tasks();
+        close();
     }
 
     virtual ::dsn::task_ptr append(mutation_ptr &mu,
