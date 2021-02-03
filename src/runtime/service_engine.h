@@ -88,20 +88,17 @@ public:
     rpc_request_task *generate_intercepted_request_task(message_ex *req);
 
 private:
-    service_app_info _info;
-    std::unique_ptr<service_app> _entity;
-
-    service_app_spec _app_spec;
-
-    std::unique_ptr<task_engine> _computation;
-    std::unique_ptr<rpc_engine> _rpc;
-
-private:
     // the service entity is initialized after the engine
     // is initialized, so this should be call in start()
     void init_service_app();
 
     error_code init_rpc_engine();
+
+    service_app_info _info;
+    service_app_spec _app_spec;
+    std::unique_ptr<task_engine> _computation;
+    std::unique_ptr<rpc_engine> _rpc;
+    std::unique_ptr<service_app> _entity;
 };
 
 typedef std::map<int, std::shared_ptr<service_node>> service_nodes_by_app_id;
