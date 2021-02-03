@@ -213,6 +213,8 @@ struct task_spec_profiler
         call_counts = nullptr;
         memset((void *)ptr, 0, sizeof(ptr));
     }
+
+    ~task_spec_profiler() { ddebug("destroy task_spec_profiler"); }
 };
 
 std::string profiler_output_handler(const std::vector<std::string> &args);
