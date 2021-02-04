@@ -97,10 +97,6 @@ error_code meta_service_app::start(const std::vector<std::string> &args)
     return _service->start();
 }
 
-error_code meta_service_app::stop(bool /*cleanup*/)
-{
-    _service.reset(nullptr);
-    return ERR_OK;
-}
+void meta_service_app::stop() { _service.reset(nullptr); }
 } // namespace service
 } // namespace dsn

@@ -138,8 +138,6 @@ public:
         return ERR_OK;
     }
 
-    error_code stop(bool) override { return ERR_OK; }
-
     void on_master_config(const config_master_message &request, bool &response)
     {
         dinfo("master config: request:%s, type:%s",
@@ -153,6 +151,7 @@ public:
     }
 
     worker_fd_test *fd() { return _worker_fd; }
+
 private:
     worker_fd_test *_worker_fd;
 };
@@ -188,9 +187,8 @@ public:
         return ERR_OK;
     }
 
-    error_code stop(bool) override { return ERR_OK; }
-
     master_fd_test *fd() { return _master_fd; }
+
 private:
     master_fd_test *_master_fd;
     replication::fd_suboptions _opts;

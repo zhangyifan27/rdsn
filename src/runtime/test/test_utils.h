@@ -138,6 +138,4 @@ public:
 
         return ::dsn::ERR_OK;
     }
-
-    ::dsn::error_code stop(bool cleanup = false) { return ERR_OK; }
 };

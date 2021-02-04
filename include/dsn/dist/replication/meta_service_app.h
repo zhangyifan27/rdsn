@@ -54,7 +54,7 @@ public:
 
     virtual ::dsn::error_code start(const std::vector<std::string> &args) override;
 
-    virtual ::dsn::error_code stop(bool cleanup = false) override;
+    virtual void stop() override;
 
 private:
     friend class ::dsn::replication::test::test_checker;

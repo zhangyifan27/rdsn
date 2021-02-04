@@ -65,13 +65,10 @@ public:
         return ::dsn::ERR_OK;
     }
 
-    virtual ::dsn::error_code stop(bool cleanup = false)
+    virtual void stop()
     {
         _tracker.cancel_outstanding_tasks();
-
         _simple_kv_client.reset();
-
-        return ::dsn::ERR_OK;
     }
 
     void on_test_timer()

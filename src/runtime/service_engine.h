@@ -63,7 +63,7 @@ class service_node
 public:
     explicit service_node(service_app_spec &app_spec);
 
-    ~service_node();
+    ~service_node() = default;
 
     rpc_engine *rpc() const { return _rpc.get(); }
     task_engine *computation() const { return _computation.get(); }
@@ -75,7 +75,8 @@ public:
 
     dsn::error_code start();
     dsn::error_code start_app();
-    dsn::error_code stop_app(bool cleanup);
+    void stop_app();
+    void stop();
 
     int id() const { return _app_spec.id; }
     const char *full_name() const { return _app_spec.full_name.c_str(); }
@@ -131,11 +132,8 @@ private:
     dsn_handle_t _get_runtime_info_cmd;
     dsn_handle_t _get_queue_info_cmd;
 
-    // <port, servicenode>
-    typedef std::map<int, service_node *>
-        node_engines_by_port; // multiple ports may share the same node
     service_nodes_by_app_id _nodes_by_app_id;
-    node_engines_by_port _nodes_by_app_port;
+    std::set<int> _app_ports;
 };
 
 // ------------ inline impl ---------------------

@@ -77,8 +77,6 @@ public:
         return ERR_OK;
     }
 
-    error_code stop(bool cleanup) override { return ERR_OK; }
-
 private:
     ref_ptr<distributed_lock_service_zookeeper> _dlock_service;
 };

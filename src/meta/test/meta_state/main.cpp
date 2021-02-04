@@ -71,8 +71,6 @@ public:
         */
         return ::dsn::ERR_OK;
     }
-
-    ::dsn::error_code stop(bool cleanup = false) { return ::dsn::ERR_OK; }
 };
 
 GTEST_API_ int main(int argc, char **argv)

@@ -62,7 +62,7 @@ public:
 
     virtual ::dsn::error_code start(const std::vector<std::string> &args) override;
 
-    virtual ::dsn::error_code stop(bool cleanup = false) override;
+    virtual void stop() override;
 
     virtual void
     on_intercepted_request(dsn::gpid gpid, bool is_write, dsn::message_ex *msg) override;

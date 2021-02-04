@@ -61,14 +61,12 @@ error_code replication_service_app::start(const std::vector<std::string> &args)
     return ERR_OK;
 }
 
-error_code replication_service_app::stop(bool cleanup)
+void replication_service_app::stop()
 {
     if (_stub != nullptr) {
         _stub->close();
         _stub = nullptr;
     }
-
-    return ERR_OK;
 }
 
 void replication_service_app::on_intercepted_request(dsn::gpid gpid,

@@ -50,7 +50,7 @@ public:
     virtual ~simple_kv_client_app();
 
     virtual ::dsn::error_code start(const std::vector<std::string> &args) override;
-    virtual ::dsn::error_code stop(bool cleanup = false) override;
+    virtual void stop() override;
 
     void run();
 

@@ -73,11 +73,10 @@ simple_kv_client_app::~simple_kv_client_app() { stop(); }
     return ::dsn::ERR_OK;
 }
 
-dsn::error_code simple_kv_client_app::stop(bool cleanup)
+void simple_kv_client_app::stop()
 {
     _tracker.cancel_outstanding_tasks();
     _simple_kv_client.reset();
-    return ::dsn::ERR_OK;
 }
 
 void simple_kv_client_app::run()

@@ -77,14 +77,11 @@ dsn::error_code service_node::start_app()
     return res;
 }
 
-dsn::error_code service_node::stop_app(bool cleanup)
+void service_node::stop_app()
 {
     dassert(_entity.get(), "entity hasn't initialized");
-    dsn::error_code res = _entity->stop(cleanup);
-    if (res == dsn::ERR_OK) {
-        _entity->set_started(false);
-    }
-    return res;
+    _entity->stop();
+    _entity->set_started(false);
 }
 
 void service_node::init_service_app()
@@ -165,7 +162,12 @@ rpc_request_task *service_node::generate_intercepted_request_task(message_ex *re
     return t;
 }
 
-service_node::~service_node() = default;
+void service_node::stop()
+{
+    if (_entity) {
+        stop_app();
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -188,6 +190,9 @@ service_engine::service_engine()
 
 service_engine::~service_engine()
 {
+    for (auto it : _nodes_by_app_id) {
+        it.second->stop();
+    }
     UNREGISTER_VALID_HANDLER(_get_runtime_info_cmd);
     UNREGISTER_VALID_HANDLER(_get_queue_info_cmd);
 }
@@ -222,14 +227,11 @@ void service_engine::start_node(service_app_spec &app_spec)
     if (it == _nodes_by_app_id.end()) {
         for (auto p : app_spec.ports) {
             // union to existing node if any port is shared
-            if (_nodes_by_app_port.find(p) != _nodes_by_app_port.end()) {
-                service_node *n = _nodes_by_app_port[p];
-
+            if (_app_ports.find(p) != _app_ports.end()) {
                 dassert(false,
-                        "network port %d usage confliction for %s vs %s, "
+                        "network port %d usage confliction for %s, "
                         "please reconfig",
                         p,
-                        n->full_name(),
                         app_spec.full_name.c_str());
             }
         }
@@ -240,7 +242,7 @@ void service_engine::start_node(service_app_spec &app_spec)
 
         _nodes_by_app_id[node->id()] = node;
         for (auto p1 : node->spec().ports) {
-            _nodes_by_app_port[p1] = node.get();
+            _app_ports.emplace(p1);
         }
 
         return;

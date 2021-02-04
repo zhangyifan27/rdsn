@@ -42,8 +42,6 @@ public:
         g_test_count = 1;
         return dsn::ERR_OK;
     }
-
-    dsn::error_code stop(bool) override { return dsn::ERR_OK; }
 };
 
 GTEST_API_ int main(int argc, char **argv)
