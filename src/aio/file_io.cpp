@@ -43,13 +43,16 @@ namespace file {
 
 /*extern*/ error_code close(disk_file *file)
 {
-    if (file != nullptr && disk_engine::is_running()) {
+    if (!disk_engine::is_running()) {
+        dwarn("disk engine is not running");
+        return ERR_OK;
+    }
+    if (file != nullptr) {
         auto ret = disk_engine::provider().close(file->native_handle());
         delete file;
         return ret;
-    } else {
-        return ERR_INVALID_HANDLE;
     }
+    return ERR_INVALID_HANDLE;
 }
 
 /*extern*/ error_code flush(disk_file *file)

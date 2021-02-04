@@ -79,11 +79,7 @@ public:
 private:
     // the object of disk_engine must be created by `singleton::instance`
     disk_engine();
-    ~disk_engine()
-    {
-        _is_running = false;
-        ddebug("close disk engine");
-    }
+    ~disk_engine() { _is_running = false; }
 
     void process_write(aio_task *wk, uint32_t sz);
     void complete_io(aio_task *aio, error_code err, uint32_t bytes);
