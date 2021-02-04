@@ -43,7 +43,7 @@ namespace file {
 
 /*extern*/ error_code close(disk_file *file)
 {
-    if (nullptr != file) {
+    if (file != nullptr && disk_engine::is_running()) {
         auto ret = disk_engine::provider().close(file->native_handle());
         delete file;
         return ret;
