@@ -31,6 +31,7 @@
 #include <dsn/tool_api.h>
 #include <dsn/utility/synchronize.h>
 #include <dsn/utility/work_queue.h>
+#include <dsn/c/api_utilities.h>
 
 namespace dsn {
 
@@ -72,20 +73,17 @@ class disk_engine : public utils::singleton<disk_engine>
 {
 public:
     void write(aio_task *aio);
-
-    service_node *node() const { return _node; }
     static aio_provider &provider() { return *instance()._provider.get(); }
 
 private:
     // the object of disk_engine must be created by `singleton::instance`
     disk_engine();
-    ~disk_engine() = default;
+    ~disk_engine() { ddebug("close disk engine."); }
 
     void process_write(aio_task *wk, uint32_t sz);
     void complete_io(aio_task *aio, error_code err, uint32_t bytes);
 
     std::unique_ptr<aio_provider> _provider;
-    service_node *_node;
 
     friend class aio_provider;
     friend class batch_write_io_task;

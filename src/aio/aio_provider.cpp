@@ -24,14 +24,11 @@
  * THE SOFTWARE.
  */
 
-#include "aio_provider.h"
 #include "disk_engine.h"
 
 namespace dsn {
 
 aio_provider::aio_provider(disk_engine *disk) : _engine(disk) {}
-
-service_node *aio_provider::node() const { return _engine->node(); }
 
 void aio_provider::complete_io(aio_task *aio, error_code err, uint32_t bytes)
 {

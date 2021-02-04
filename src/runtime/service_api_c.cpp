@@ -24,6 +24,7 @@
  * THE SOFTWARE.
  */
 
+#include "aio/disk_engine.h"
 #include "service_engine.h"
 #include "utils/coredump.h"
 #include "runtime/rpc/rpc_engine.h"
@@ -299,6 +300,7 @@ inline void dsn_global_init()
     // because service_engine relies on the former to monitor
     // task queues length.
     dsn::perf_counters::instance();
+    dsn::disk_engine::instance();
     dsn::service_engine::instance();
 }
 
