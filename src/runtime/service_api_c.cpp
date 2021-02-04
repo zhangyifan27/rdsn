@@ -115,7 +115,10 @@ DSN_API bool dsn_rpc_register_handler(dsn::task_code code,
 
 DSN_API bool dsn_rpc_unregiser_handler(dsn::task_code code)
 {
-    return ::dsn::task::get_current_node()->rpc_unregister_handler(code);
+    if (!dsn::task::get_current_node()) {
+        return true;
+    }
+    return dsn::task::get_current_node()->rpc_unregister_handler(code);
 }
 
 DSN_API void dsn_rpc_call(dsn::rpc_address server, dsn::rpc_response_task *rpc_call)
