@@ -1033,6 +1033,30 @@ dsn::error_code replication_ddl_client::add_backup_policy(const std::string &pol
     return ERR_OK;
 }
 
+dsn::error_code replication_ddl_client::backup_app(int32_t app_id,
+                                                   const std::string &backup_provider_type)
+{
+    std::shared_ptr<start_backup_app_request> req = std::make_shared<start_backup_app_request>();
+    req->app_id = app_id;
+    req->backup_provider_type = backup_provider_type;
+    auto resp_task = request_meta<start_backup_app_request>(RPC_CM_START_BACKUP_APP, req);
+    resp_task->wait();
+
+    if (resp_task->error() != ERR_OK) {
+        return resp_task->error();
+    }
+
+    start_backup_app_response resp;
+    ::dsn::unmarshall(resp_task->get_response(), resp);
+
+    if (resp.err == ERR_OK) {
+        std::cout << "backup_id:" << resp.backup_id << std::endl;
+    }
+
+    std::cout << resp.hint_message << std::endl;
+    return resp.err;
+}
+
 dsn::error_code replication_ddl_client::disable_backup_policy(const std::string &policy_name)
 {
     std::shared_ptr<configuration_modify_backup_policy_request> req =
