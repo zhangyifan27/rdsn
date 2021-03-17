@@ -44,6 +44,7 @@
 #include <dsn/utils/time_utils.h>
 
 #include "common/replication_common.h"
+#include "meta/meta_rpc_types.h"
 
 namespace dsn {
 namespace replication {
@@ -1055,6 +1056,18 @@ dsn::error_code replication_ddl_client::backup_app(int32_t app_id,
 
     std::cout << resp.hint_message << std::endl;
     return resp.err;
+}
+
+error_with<query_backup_status_response> replication_ddl_client::query_backup(int32_t app_id,
+                                                                              int64_t backup_id)
+{
+    auto req = make_unique<query_backup_status_request>();
+    req->app_id = app_id;
+
+    if (backup_id > 0) {
+        req->__set_backup_id(backup_id);
+    }
+    return call_rpc_sync(query_backup_status_rpc(std::move(req), RPC_CM_QUERY_BACKUP_STATUS));
 }
 
 dsn::error_code replication_ddl_client::disable_backup_policy(const std::string &policy_name)
