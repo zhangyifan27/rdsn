@@ -98,6 +98,7 @@ class task_engine
 {
 public:
     task_engine(service_node *node);
+    ~task_engine();
 
     //
     // service management routines

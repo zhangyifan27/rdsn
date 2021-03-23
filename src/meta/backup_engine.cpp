@@ -29,7 +29,11 @@ backup_engine::backup_engine(backup_service *service)
 {
 }
 
-backup_engine::~backup_engine() { _tracker.cancel_outstanding_tasks(); }
+backup_engine::~backup_engine()
+{
+    ddebug("backup engine: cancel outstanding tasks.");
+    _tracker.cancel_outstanding_tasks();
+}
 
 error_code backup_engine::init_backup(int32_t app_id)
 {

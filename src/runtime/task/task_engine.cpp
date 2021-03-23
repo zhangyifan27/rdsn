@@ -206,6 +206,12 @@ task_engine::task_engine(service_node *node)
     _node = node;
 }
 
+task_engine::~task_engine()
+{
+    _is_running = false;
+    ddebug("destroy task engine.");
+}
+
 void task_engine::create(const std::list<threadpool_code> &pools)
 {
     if (_is_running)
@@ -270,4 +276,4 @@ void task_engine::get_queue_info(/*out*/ std::stringstream &ss)
         }
     }
 }
-} // end namespace
+} // namespace dsn

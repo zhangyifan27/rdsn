@@ -315,19 +315,25 @@ bool task::cancel(bool wait_until_finished, /*out*/ bool *finished /*= nullptr*/
     bool succ = false;
 
     if (current_tsk != this) {
+        ddebug("task cancel not itself");
+        ddebug_f("task code : {}", current_tsk->code().to_string());
         if (_state.compare_exchange_strong(
                 READY_STATE, TASK_STATE_CANCELLED, std::memory_order_relaxed)) {
+            ddebug("old state == READY_STATE");
             succ = true;
             finish = true;
         } else {
             task_state old_state = READY_STATE;
             if (old_state == TASK_STATE_CANCELLED) {
+                ddebug("old state == TASK_STATE_CANCELLED");
                 succ = false; // this cancellation fails
                 finish = true;
             } else if (old_state == TASK_STATE_FINISHED) {
+                ddebug("old state == TASK_STATE_FINISHED");
                 succ = false;
                 finish = true;
             } else if (wait_until_finished) {
+                ddebug("wait_until_finished = true");
                 _wait_for_cancel = true;
                 bool r = wait_on_cancel();
                 dassert(
@@ -337,6 +343,7 @@ bool task::cancel(bool wait_until_finished, /*out*/ bool *finished /*= nullptr*/
                 succ = false;
                 finish = true;
             } else {
+                ddebug("finish = false");
                 succ = false;
                 finish = false;
             }
