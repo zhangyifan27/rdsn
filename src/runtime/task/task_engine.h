@@ -39,6 +39,7 @@
 #include <dsn/tool-api/task_queue.h>
 #include <dsn/tool-api/task_worker.h>
 #include <dsn/tool-api/timer_service.h>
+#include <dsn/dist/fmt_logging.h>
 
 namespace dsn {
 
@@ -95,6 +96,7 @@ class task_engine
 {
 public:
     task_engine(service_node *node);
+    ~task_engine();
 
     //
     // service management routines

@@ -315,6 +315,7 @@ bool task::cancel(bool wait_until_finished, /*out*/ bool *finished /*= nullptr*/
     bool succ = false;
 
     if (current_tsk != this) {
+        ddebug("task not cancel itself");
         if (_state.compare_exchange_strong(
                 READY_STATE, TASK_STATE_CANCELLED, std::memory_order_relaxed)) {
             succ = true;
@@ -345,6 +346,7 @@ bool task::cancel(bool wait_until_finished, /*out*/ bool *finished /*= nullptr*/
         // task cancel itself
         // for timer task, we should set _wait_for_cancel flag to
         // prevent timer task from enqueueing again
+        ddebug("task cancel itself");
         _wait_for_cancel = true;
     }
 
@@ -376,6 +378,11 @@ const char *task::get_current_node_name()
 
 void task::enqueue()
 {
+    if (TASK_STATE_CANCELLED == state()) {
+        return;
+    }
+    ddebug("enqueue task : %s", _spec->name.c_str());
+
     dassert(_node != nullptr, "service node unknown for this task");
     dassert(_spec->type != TASK_TYPE_RPC_RESPONSE,
             "tasks with TASK_TYPE_RPC_RESPONSE type use task::enqueue(caller_pool()) instead");

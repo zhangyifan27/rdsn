@@ -187,7 +187,10 @@ task_engine::task_engine(service_node *node)
 {
     _is_running = false;
     _node = node;
+    ddebug_f("create task engine for node {}", _node->full_name());
 }
+
+task_engine::~task_engine() { ddebug_f("destroy task engine for node {}", _node->full_name()); }
 
 void task_engine::create(const std::list<threadpool_code> &pools)
 {
