@@ -143,12 +143,14 @@ void duplication_sync_timer::close()
     {
         zauto_lock l(_lock);
         if (_rpc_task) {
+            ddebug("cancel rpc task");
             _rpc_task->cancel(true);
             _rpc_task = nullptr;
         }
     }
 
     if (_timer_task) {
+        ddebug("cancel duplication timer task");
         _timer_task->cancel(true);
         _timer_task = nullptr;
     }
