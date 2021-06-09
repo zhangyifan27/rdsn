@@ -39,7 +39,6 @@
 #include <dsn/tool-api/task_queue.h>
 #include <dsn/tool-api/task_worker.h>
 #include <dsn/tool-api/timer_service.h>
-#include <dsn/dist/fmt_logging.h>
 
 namespace dsn {
 
@@ -59,6 +58,7 @@ public:
     // service management
     void create();
     void start();
+    void stop();
 
     // task procecessing
     void enqueue(task *task);
@@ -103,6 +103,7 @@ public:
     //
     void create(const std::list<dsn::threadpool_code> &pools);
     void start();
+    void stop();
 
     //
     // task management routines
