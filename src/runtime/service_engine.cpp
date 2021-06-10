@@ -168,6 +168,7 @@ rpc_request_task *service_node::generate_intercepted_request_task(message_ex *re
 
 service_node::~service_node()
 {
+    _rpc->stop_serving();
     stop_app(false);
     _computation->stop();
 }

@@ -251,7 +251,7 @@ void task_engine::stop()
             pl->stop();
     }
     _is_running = false;
-    ddebug_f("[{}]: stop task engine", _node->full_name());
+    ddebug_f("[{}]: task engine stopped", _node->full_name());
 }
 
 volatile int *task_engine::get_task_queue_virtual_length_ptr(dsn::task_code code, int hash)
