@@ -331,19 +331,23 @@ void mutation_log_private::flush_once() { flush_internal(1); }
 
 void mutation_log_private::flush_internal(int max_count)
 {
+    ddebug_f("start to flush plog, max_count is {}", max_count);
     int count = 0;
     while (max_count <= 0 || count < max_count) {
         if (_is_writing.load(std::memory_order_acquire)) {
             _tracker.wait_outstanding_tasks();
         } else {
             _plock.lock();
+            ddebug("got plock");
             if (_is_writing.load(std::memory_order_acquire)) {
                 _plock.unlock();
+                ddebug("release plock");
                 continue;
             }
             if (!_pending_write) {
                 // !_is_writing && !_pending_write, means flush done
                 _plock.unlock();
+                ddebug("release plock");
                 break;
             }
             // !_is_writing && _pending_write, start next write
@@ -389,6 +393,7 @@ void mutation_log_private::write_pending_mutations(bool release_lock_required)
     // Free plog from lock during committing log block, in the meantime
     // new mutations can still be appended.
     _plock.unlock();
+    ddebug("release plock");
     commit_pending_mutations(pr.first, pending, max_commit);
 }
 
