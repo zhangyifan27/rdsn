@@ -1720,7 +1720,9 @@ void replica_stub::on_gc()
             if (plog) {
                 // flush private log to update plog_max_commit_on_disk,
                 // and just flush once to avoid flushing infinitely
+                ddebug_f("start to flush private log for replica {}", rep->name());
                 plog->flush_once();
+                ddebug_f("flush private log finish for replica {}", rep->name());
 
                 decree plog_max_commit_on_disk = plog->max_commit_on_disk();
                 ri.max_decree = std::min(kv.second.last_durable_decree, plog_max_commit_on_disk);
